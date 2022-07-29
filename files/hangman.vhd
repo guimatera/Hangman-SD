@@ -10,7 +10,7 @@
 -- Tool versions: 
 -- Description: 
 --
--- Dependencies: 
+-- Dep	encies: 
 --
 -- Revision: 
 -- Revision 0.01 - File Created
@@ -30,78 +30,93 @@ use IEEE.STD_LOGIC_1164.ALL;
 --use UNISIM.VComponents.all;
 
 entity hangman is
-	port (clk, reset: in std_logic;
-			z : out std_logic);
+	port (CLOCK_50: in std_logic; -- sinal de clock  (E12)
+			enable:	in std_logic; -- switch de habilitação para leitura de palpites ()
+			c : in std_logic_vector(2 downto 0); -- switches de palpites do usuário em binário ()
+			vida: out std_logic_vector(1 downto 0) := "11"; -- leds contadores de vidas restantes em binário	()
+			senha: out std_logic_vector(5 downto 0)  := "000000"); -- gabarito da forca no leds ()
 end hangman;
 
 architecture Behavioral of hangman is
 
-type state is(s_0 , s_1, s_2, s_3, S_4, s_5);
-signal x_current, x_next: state;
-
+type state is(s_0 , s_1, s_2, s_3, S_4);
 -- s_0 => input
 -- s_1 => acerto
 -- s_2 => perde vida
--- s_3 => igual
--- s_4 => vitória
--- s_5 => derrota
+-- s_3 => vitória
+-- s_4 => derrota
 
-component lives is 
-	port(remaining_lives: IN integer range 0 to 5 := 5;
-		  led: OUT STD_Logic_Vector(3 downTo 0));
-end component;
+signal x_current, x_next: state;
+-- signal p: std_logic_vector(5 downto 0) := "000000";
+signal remaining_lives: integer := 3;
+
 
 begin
-Process (reset, clk)
+
+	Process (CLOCK_50)	--Process responsável por atualizar estados após sinal de clock e enable ativado.
 	begin
-		if (reset = '1') then
-			x_current <= s_0;
-		elsif (rising_edge(clk)) then
-			x_current <= x_next;	
-		end if;
+		if (rising_edge(CLOCK_50) and enable = '1') then
+			x_current <= x_next;
 	end process;
 	
-	Process (x_current)
+	
+	Process (x_current) --Process responsável pelo fluxo da máquina de estados.
 	begin 
-		z <= '0'; -- Saída iniciada como 'perdeu'
 		case x_current is
 			when s_0 => 
-				if (true) then -- acertou número
+				if (c = "000" or c = "001" or c = "101" or c = "110" or c = "111") then -- acertou número
 					x_next <= s_1;
-				elsif (false) then -- errou número
-					x_next <= s_2;
-				else 				-- digitou número já inserido
-					x_next <= s_3; 
+				else 				-- errou o número
+					x_next <= s_2; 
 				end if;
 				
-			when s_1 => 
-				if (true) then	-- acertou número final
-					x_next <= s_4;
-					z <= '1';	-- Saída alterada para indicar que 'ganhou'
-				else 				-- acertou um número, sem vencer 
+			when s_1 => -- Ativa leds correspondentes ao acerto do palpite 
+				if (c = "000") then
+					senha(0) <= '1';
+				elsif (c = "001") then
+					if(senha(1) = '0') then
+						senha(1) <= '1';
+					else
+						senha(2) <= '1';
+					end if;
+				elsif (c = "101") then
+					senha(3) <= '1';
+				elsif (c = "110") then
+					senha(4) <= '1';
+				else
+					senha(5) <= '1';
+				end if;
+				
+				
+				if (senha = "111111") then --acertou todos os números
+					x_next <= s_3;
+				else
 					x_next <= s_0;
 				end if;
 			
 			when s_2 => 
-				-- remaining_lives = remaining_lives - 1; -- Decremento na contagem de vidas
-				if (true) then	-- errou, sem mais vidas
-					x_next <= s_5;
+				remaining_lives <= remaining_lives - 1; -- Decremento na contagem de vidas
+				
+				case remaining_lives is --Mapeando contagem de vidas para os leds da placa
+					when 3 => vida <= "11";
+					when 2 => vida <= "10";
+					when 1 => vida <= "01";
+					when others => vida <= "00";
+				end case;
+				
+				if (remaining_lives = 0) then	-- errou, sem mais vidas
+					x_next <= s_4;
 				else 				-- errou, vidas sobrando
 					x_next <= s_0;
 				end if;
-				
-			when s_3 => 
-				x_next <= s_0; -- Digitou número que já saiu
 					
-			when s_4 =>
-				x_next <= x_current; -- Venceu o jogo e se mantém assim até resetar
-				z <= '1';				-- Saída alterada para indicar que 'ganhou'
+			when s_3 =>
+				x_next <= x_current; -- Venceu o jogo 
 			
-			when s_5 =>
-				x_next <= x_current; -- Perdeu o jogo e se mantém assim até resetar
+			when s_4 =>
+				x_next <= x_current; -- Perdeu o jogo 
 				
-		end case;
+			end case;
 	end process;
-
 end Behavioral;
 
