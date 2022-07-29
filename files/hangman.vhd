@@ -31,10 +31,10 @@ use IEEE.STD_LOGIC_1164.ALL;
 
 entity hangman is
 	port (CLOCK_50: in std_logic; -- sinal de clock  (E12)
-			enable:	in std_logic; -- switch de habilitação para leitura de palpites ()
-			c : in std_logic_vector(2 downto 0); -- switches de palpites do usuário em binário ()
-			vida: out std_logic_vector(1 downto 0) := "11"; -- leds contadores de vidas restantes em binário	()
-			senha: out std_logic_vector(5 downto 0)  := "000000"); -- gabarito da forca no leds ()
+			enable:	in std_logic; -- switch de habilitação para leitura de palpites (T9)
+			c : in std_logic_vector(2 downto 0); -- switches de palpites do usuário em binário (U8, U10, V8)
+			vida: out std_logic_vector(1 downto 0) := "11"; -- leds contadores de vidas restantes em binário	(W21, Y22)
+			senha: out std_logic_vector(5 downto 0)  := "000000"); -- gabarito da forca no leds (V20, V19, U19, U20, T19, R20)
 end hangman;
 
 architecture Behavioral of hangman is
@@ -47,19 +47,20 @@ type state is(s_0 , s_1, s_2, s_3, S_4);
 -- s_4 => derrota
 
 signal x_current, x_next: state;
--- signal p: std_logic_vector(5 downto 0) := "000000";
+signal password: std_logic_vector(5 downto 0) := "000000";
 signal remaining_lives: integer := 3;
 
 
 begin
 
-	Process (CLOCK_50)	--Process responsável por atualizar estados após sinal de clock e enable ativado.
+	Process (CLOCK_50)	-- Process responsável por atualizar estados após sinal de clock e enable ativado.
 	begin
 		if (rising_edge(CLOCK_50) and enable = '1') then
 			x_current <= x_next;
+		end if;
 	end process;
 	
-	
+	 
 	Process (x_current) --Process responsável pelo fluxo da máquina de estados.
 	begin 
 		case x_current is
@@ -72,23 +73,24 @@ begin
 				
 			when s_1 => -- Ativa leds correspondentes ao acerto do palpite 
 				if (c = "000") then
-					senha(0) <= '1';
+					password(0) <= '1';
 				elsif (c = "001") then
-					if(senha(1) = '0') then
-						senha(1) <= '1';
+					if(password(1) = '0') then
+						password(1) <= '1';
 					else
-						senha(2) <= '1';
+						password(2) <= '1';
 					end if;
 				elsif (c = "101") then
-					senha(3) <= '1';
+					password(3) <= '1';
 				elsif (c = "110") then
-					senha(4) <= '1';
+					password(4) <= '1';
 				else
-					senha(5) <= '1';
+					password(5) <= '1';
 				end if;
 				
+				senha <= password;
 				
-				if (senha = "111111") then --acertou todos os números
+				if (password = "111111") then -- Acertou todos os números
 					x_next <= s_3;
 				else
 					x_next <= s_0;
@@ -97,7 +99,7 @@ begin
 			when s_2 => 
 				remaining_lives <= remaining_lives - 1; -- Decremento na contagem de vidas
 				
-				case remaining_lives is --Mapeando contagem de vidas para os leds da placa
+				case remaining_lives is -- Mapeando contagem de vidas para os leds da placa
 					when 3 => vida <= "11";
 					when 2 => vida <= "10";
 					when 1 => vida <= "01";
